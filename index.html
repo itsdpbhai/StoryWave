@@ -1,424 +1,407 @@
 <!DOCTYPE html>
-<html lang="hi" data-theme="crimson">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StoryWave | द</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>StoryWave - Premium Audio Stories</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --bg: #0b0b0b; --card: #1a1a1a; --text: #ffffff; --dim: #a0a0a0;
-            --crimson: #dc143c; --violet: #8a2be2; --gold: #ffb400; 
-            --forest: #2ecc71; --navy: #3498db; --sepia: #d2b48c;
-            --primary: var(--crimson);
+            --primary-color: #e50914; /* Netflix Red style */
+            --secondary-color: #ff4b2b;
+            --bg-dark: #0f0f0f;
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --text-white: #ffffff;
+            --text-gray: #b3b3b3;
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
-        [data-theme="violet"] { --primary: var(--violet); }
-        [data-theme="gold"] { --primary: var(--gold); }
-        [data-theme="forest"] { --primary: var(--forest); }
-        [data-theme="navy"] { --primary: var(--navy); }
-        [data-theme="sepia"] { --primary: var(--sepia); }
 
-        * { margin:0; padding:0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background: var(--bg); color: var(--text); padding-bottom: 80px; overflow-x: hidden; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
 
-        header { display: flex; justify-content: space-between; align-items: center; padding: 15px; position: sticky; top:0; background: var(--bg); z-index: 100; border-bottom: 1px solid #222; }
-        .logo { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
-        .logo span { color: #fff; margin-left: 5px; font-weight: 400; }
+        body {
+            background: radial-gradient(circle at top right, #2b1010, #0f0f0f);
+            color: var(--text-white);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
 
-        #sidebar { position: fixed; left: -100%; top: 0; width: 280px; height: 100%; background: var(--card); z-index: 1000; padding: 20px; box-shadow: 10px 0 30px rgba(0,0,0,0.5); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        #sidebar.active { left: 0; }
-        .nav-links div { padding: 15px 0; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; gap: 15px; font-size: 0.95rem; }
-        
-        .theme-grid { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
-        .t-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid #333; }
+        /* Subtle Background Blur Circles */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: var(--primary-color);
+            filter: blur(150px);
+            border-radius: 50%;
+            z-index: -1;
+            top: 10%;
+            left: 10%;
+            opacity: 0.2;
+        }
 
-        .banner { width: 92%; margin: 15px auto; height: 180px; border-radius: 15px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent), url('https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&w=800&q=80'); background-size: cover; display: flex; flex-direction: column; justify-content: flex-end; padding: 15px; }
-        .section-header { padding: 15px; font-weight: bold; color: var(--primary); font-size: 1.1rem; }
-        .scroll-row { display: flex; overflow-x: auto; gap: 15px; padding: 0 15px; scrollbar-width: none; min-height: 200px; }
-        
-        .card { min-width: 145px; background: var(--card); border-radius: 12px; overflow: hidden; position: relative; cursor: pointer; transition: 0.3s; }
-        .card img { width: 100%; height: 190px; object-fit: cover; }
-        .card-info { padding: 10px; font-size: 0.85rem; font-weight: 500; }
-        .badge { position: absolute; top: 8px; right: 8px; background: var(--primary); font-size: 0.65rem; padding: 3px 7px; border-radius: 5px; font-weight: bold; z-index: 2; }
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.8s ease-out;
+        }
 
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #0f0f0f; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 99; }
-        .nav-item { text-align: center; color: var(--dim); font-size: 0.7rem; cursor: pointer; }
-        .nav-item.active { color: var(--primary); }
-        .nav-item i { font-size: 1.3rem; display: block; margin-bottom: 3px; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-        .page { display: none; animation: slideUp 0.4s ease; min-height: 80vh; }
-        .page.active { display: block; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
 
-        #video-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; display: none; flex-direction: column; }
-        #video-player { width: 100%; height: 100%; object-fit: contain; }
-        .close-video { position: absolute; top: 30px; right: 25px; font-size: 2.2rem; color: #fff; z-index: 2100; cursor: pointer; text-shadow: 0 0 10px #000; }
-        .video-overlay { position: absolute; bottom: 40px; left: 20px; right: 20px; z-index: 2100; pointer-events: none; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px; }
+        .logo {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
 
-        .search-container { padding: 15px; display: flex; gap: 10px; }
-        .search-container input { margin-bottom: 0; flex: 1; }
-        .search-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 15px; }
+        .logo span {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5rem;
+        }
 
-        .admin-section { padding: 20px; margin: 15px; background: var(--card); border-radius: 12px; }
-        input, textarea, select { width: 100%; padding: 12px; margin-bottom: 15px; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; outline: none; }
-        .btn { background: var(--primary); border: none; padding: 12px; color: #fff; border-radius: 8px; font-weight: 600; width: 100%; cursor: pointer; transition: 0.3s; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
-        .status-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-        .st-free { background: #555; }
-        .st-prem { background: var(--gold); color: #000; }
-        #admin-link { display: none; color: var(--gold) !important; font-weight: bold; }
+        .logo-icon {
+            background: var(--primary-color);
+            color: white;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 1.8rem;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--text-white);
+            font-weight: 400;
+        }
+
+        /* Form Inputs */
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-gray);
+            transition: 0.3s;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .input-group input:focus + i {
+            color: var(--primary-color);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            left: auto !important;
+            cursor: pointer;
+            color: var(--text-gray);
+        }
+
+        /* Options row */
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            margin-bottom: 25px;
+            color: var(--text-gray);
+        }
+
+        .options label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .options a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .options a:hover { text-decoration: underline; }
+
+        /* Buttons */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.4s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(229, 9, 20, 0.4);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+            color: var(--text-gray);
+            font-size: 0.8rem;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+
+        .google-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            color: #333;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .google-btn:hover { background: #f1f1f1; }
+
+        /* Footer */
+        .footer-link {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        .footer-link span {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Error/Toast Style */
+        .toast {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4b2b;
+            padding: 12px 25px;
+            border-radius: 8px;
+            transition: 0.5s;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .toast.show { top: 20px; }
+
+        /* Spinner for loading */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Mobile Responsive */
+        @media (max-width: 480px) {
+            .login-card { padding: 30px 20px; margin: 15px; }
+            .logo { font-size: 1.8rem; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div class="logo">StoryWave <span>द</span></div>
-        <div id="user-info-side" style="margin: 15px 0; font-size: 0.8rem; color: var(--dim);">Sign in to explore</div>
-        <div class="nav-links">
-            <div onclick="showPage('home')"><i class="fas fa-home"></i> Home</div>
-            <div onclick="showPage('search-page')"><i class="fas fa-search"></i> Search</div>
-            <div id="admin-link" onclick="showPage('admin')"><i class="fas fa-user-shield"></i> Admin Panel</div>
-            <div onclick="showPage('membership')"><i class="fas fa-crown"></i> Membership</div>
-            <div onclick="showPage('profile')"><i class="fas fa-user-circle"></i> My Profile</div>
-        </div>
-        <div style="margin-top: 30px;">
-            <p style="font-size: 0.75rem; color: var(--dim); margin-bottom: 10px;">Select Theme</p>
-            <div class="theme-grid">
-                <div class="t-dot" style="background:var(--crimson)" onclick="changeTheme('crimson')"></div>
-                <div class="t-dot" style="background:var(--violet)" onclick="changeTheme('violet')"></div>
-                <div class="t-dot" style="background:var(--gold)" onclick="changeTheme('gold')"></div>
-                <div class="t-dot" style="background:var(--forest)" onclick="changeTheme('forest')"></div>
-                <div class="t-dot" style="background:var(--navy)" onclick="changeTheme('navy')"></div>
+    <div id="toast" class="toast">Please check your inputs!</div>
+
+    <div class="login-card">
+        <div class="logo-container">
+            <div class="logo">
+                <div class="logo-icon">द</div>
+                Story<span>Wave</span>
             </div>
+            <h2>Premium Audio Stories</h2>
         </div>
-        <button class="btn" onclick="toggleSidebar()" style="margin-top: 30px; background: transparent; border: 1px solid #444;">Close</button>
-    </div>
 
-    <header>
-        <i class="fas fa-bars" onclick="toggleSidebar()" style="cursor:pointer"></i>
-        <div class="logo">StoryWave <span>द</span></div>
-        <i class="fas fa-search" onclick="showPage('search-page')" style="cursor:pointer"></i>
-    </header>
-
-    <div id="home" class="page active">
-        <div class="banner">
-            <p style="font-size: 0.7rem; letter-spacing: 1px;">PREMIUM SHORTS</p>
-            <h2 id="hero-title">Trending Now</h2>
-        </div>
-        <div class="section-header">Hot Story Shorts</div>
-        <div class="scroll-row" id="trending-container">
-            <div style="padding:20px; color:var(--dim);"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-        </div>
-        <div class="section-header">Recently Uploaded</div>
-        <div class="scroll-row" id="latest-container">
-            <div style="padding:20px; color:var(--dim);"><i class="fas fa-spinner fa-spin"></i></div>
-        </div>
-    </div>
-
-    <div id="search-page" class="page">
-        <div class="search-container">
-            <input type="text" id="main-search-input" placeholder="कहानियाँ खोजें (जैसे: डरावनी, प्यार)...">
-            <button class="btn" style="width: 60px;" onclick="runSearch()"><i class="fas fa-search"></i></button>
-        </div>
-        <div id="search-info" style="padding: 0 15px; color: var(--dim); font-size: 0.8rem;"></div>
-        <div class="search-grid" id="search-results"></div>
-    </div>
-
-    <div id="admin" class="page">
-        <div class="admin-section">
-            <h3>Add New Story</h3>
-            <input type="text" id="adm-title" placeholder="Story Title">
-            <textarea id="adm-desc" placeholder="Brief Description" rows="2"></textarea>
-            <input type="text" id="adm-thumb" placeholder="Thumbnail Image URL">
-            <input type="text" id="adm-video" placeholder="M3U8 Video URL">
-            <select id="adm-type">
-                <option value="SHORT VIDEO">SHORT VIDEO</option>
-                <option value="PREMIUM">PREMIUM STORY</option>
-            </select>
-            <button class="btn" onclick="uploadStory()">Upload Story</button>
-        </div>
-        <div class="admin-section">
-            <h3>User Management</h3>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
-                    <tbody id="user-table-body"></tbody>
-                </table>
+        <form id="loginForm">
+            <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="email" placeholder="Email Address" required>
             </div>
-        </div>
-    </div>
 
-    <div id="membership" class="page">
-        <div style="padding: 40px 20px; text-align: center;">
-            <i class="fas fa-crown" style="font-size: 4rem; color: var(--gold); margin-bottom: 20px;"></i>
-            <h2>Get Premium</h2>
-            <p style="color:var(--dim); margin: 15px 0;">Unlock all premium shorts and storytelling content.</p>
-            <div style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--primary);">
-                <h3>Exclusive Access</h3>
-                <p style="font-size: 0.8rem; color: var(--dim); margin-top:5px;">Contact admin to upgrade your membership status.</p>
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="password" placeholder="Password" required>
+                <i class="fa-solid fa-eye-slash toggle-password" id="togglePass"></i>
             </div>
-        </div>
-    </div>
 
-    <div id="profile" class="page">
-        <div style="padding: 40px 20px; text-align: center;">
-            <div id="profile-card" style="background: var(--card); padding: 30px; border-radius: 15px;">
-                <i class="fas fa-user-circle" style="font-size: 5rem; color: var(--primary);"></i>
-                <h2 id="profile-name" style="margin-top: 15px;">Guest User</h2>
-                <p id="profile-email" style="color: var(--dim); margin-bottom: 10px;">Sign in to save progress</p>
-                <span id="profile-badge" class="status-badge st-free">FREE</span>
-                <button id="auth-btn" class="btn" style="margin-top: 25px;" onclick="handleGoogleAuth()">Login with Google</button>
+            <div class="options">
+                <label><input type="checkbox"> Remember me</label>
+                <a href="#">Forgot Password?</a>
             </div>
-        </div>
-    </div>
 
-    <div id="video-modal">
-        <span class="close-video" onclick="closeVideo()">&times;</span>
-        <video id="video-player" playsinline loop></video>
-        <div class="video-overlay">
-            <h2 id="v-title" style="margin-bottom: 5px;">Title</h2>
-            <p id="v-desc" style="font-size: 0.85rem; color: #eee;"></p>
-        </div>
-    </div>
+            <button type="submit" class="btn-login" id="loginSubmit">
+                <span id="btnText">Login</span>
+                <div class="spinner" id="loader"></div>
+            </button>
 
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="showPage('home')"><i class="fas fa-home"></i>Home</div>
-        <div class="nav-item" onclick="showPage('search-page')"><i class="fas fa-bolt"></i>Shorts</div>
-        <div class="nav-item" onclick="showPage('membership')"><i class="fas fa-crown"></i>Member</div>
-        <div class="nav-item" onclick="showPage('profile')"><i class="fas fa-user"></i>Profile</div>
-    </nav>
+            <div class="divider">OR</div>
+
+            <button type="button" class="google-btn">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18" alt="Google">
+                Continue with Google
+            </button>
+        </form>
+
+        <p class="footer-link">Don't have an account? <span>Sign Up</span></p>
+    </div>
 
     <script>
-        const ADMIN_EMAIL = "itsdpbhai@gmail.com";
+        // DOM Elements
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passInput = document.getElementById('password');
+        const togglePass = document.getElementById('togglePass');
+        const toast = document.getElementById('toast');
+        const loader = document.getElementById('loader');
+        const btnText = document.getElementById('btnText');
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCyElbluiPaxvvbrQKmWJIVjeX2hUj0pVM",
-            authDomain: "story-wave-3a034.firebaseapp.com",
-            projectId: "story-wave-3a034",
-            storageBucket: "story-wave-3a034.firebasestorage.app",
-            messagingSenderId: "584894011612",
-            appId: "1:584894011612:web:1a507afb194ab806763c19",
-            measurementId: "G-4KMRL1VNGM"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const provider = new firebase.auth.GoogleAuthProvider();
-        
-        const videoElement = document.getElementById('video-player');
-        let hls = new Hls();
-
-        // --- AUTHENTICATION LOGIC (FIXED) ---
-        
-        // चेक करें कि क्या यूजर लॉगिन होकर वापस आया है (Redirect के बाद)
-        auth.getRedirectResult().then(async (result) => {
-            if (result.user) {
-                const user = result.user;
-                const userRef = db.collection('users').doc(user.uid);
-                const doc = await userRef.get();
-                if (!doc.exists) {
-                    await userRef.set({
-                        name: user.displayName,
-                        email: user.email,
-                        membership: 'FREE',
-                        uid: user.uid,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-                showPage('home');
-            }
-        }).catch(err => {
-            if(err.code === 'auth/unauthorized-domain') {
-                alert("Error: Firebase Console में itsdpbhai.github.io डोमेन को Authorized Domains में जोड़ें।");
-            } else {
-                console.error("Auth Error:", err.message);
-            }
+        // Toggle Password Visibility
+        togglePass.addEventListener('click', () => {
+            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passInput.setAttribute('type', type);
+            togglePass.classList.toggle('fa-eye');
+            togglePass.classList.toggle('fa-eye-slash');
         });
 
-        function handleGoogleAuth() {
-            const authBtn = document.getElementById('auth-btn');
-            if (auth.currentUser) {
-                auth.signOut().then(() => { location.reload(); });
-            } else {
-                authBtn.disabled = true;
-                authBtn.innerText = "Connecting...";
-                // Redirect का इस्तेमाल करें ताकि Popup Block न हो
-                auth.signInWithRedirect(provider);
-            }
+        // Show Toast Function
+        function showToast(msg, color = "#ff4b2b") {
+            toast.innerText = msg;
+            toast.style.background = color;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        auth.onAuthStateChanged(async (user) => {
-            const adminLink = document.getElementById('admin-link');
-            const sideInfo = document.getElementById('user-info-side');
-            const pName = document.getElementById('profile-name');
-            const pEmail = document.getElementById('profile-email');
-            const pBadge = document.getElementById('profile-badge');
-            const authBtn = document.getElementById('auth-btn');
+        // Form Validation & Submission
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const emailValue = emailInput.value.trim();
+            const passValue = passInput.value.trim();
 
-            if (user) {
-                const doc = await db.collection('users').doc(user.uid).get();
-                const uData = doc.exists ? doc.data() : { name: user.displayName, email: user.email, membership: 'FREE' };
-                sideInfo.innerText = `नमस्ते, ${uData.name}`;
-                pName.innerText = uData.name;
-                pEmail.innerText = uData.email;
-                pBadge.innerText = uData.membership;
-                pBadge.className = `status-badge ${uData.membership === 'PREMIUM' ? 'st-prem' : 'st-free'}`;
-                authBtn.innerText = "Logout";
-                if (user.email === ADMIN_EMAIL) {
-                    adminLink.style.display = 'flex';
-                    loadAdminUsers();
-                }
-            } else {
-                sideInfo.innerText = "Sign in to explore";
-                pName.innerText = "Guest User";
-                pEmail.innerText = "Sign in with Google";
-                pBadge.innerText = "FREE";
-                pBadge.className = "status-badge st-free";
-                authBtn.innerText = "Login with Google";
-                adminLink.style.display = 'none';
+            // Simple Regex for email validation
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailPattern.test(emailValue)) {
+                showToast("Please enter a valid email address!");
+                return;
             }
+
+            if (passValue.length < 6) {
+                showToast("Password must be at least 6 characters!");
+                return;
+            }
+
+            // Start Loading Animation
+            btnText.style.display = 'none';
+            loader.style.display = 'block';
+            document.getElementById('loginSubmit').disabled = true;
+
+            // Mocking an API call
+            setTimeout(() => {
+                loader.style.display = 'none';
+                btnText.style.display = 'block';
+                btnText.innerText = 'Success!';
+                showToast("Login Successful! Welcome back.", "#2ecc71");
+                
+                // Reset button after success
+                setTimeout(() => {
+                    document.getElementById('loginSubmit').disabled = false;
+                    btnText.innerText = 'Login';
+                }, 2000);
+            }, 2000);
         });
-
-        // --- UI & CORE FUNCTIONS ---
-        function changeTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('sw_theme', theme);
-        }
-        changeTheme(localStorage.getItem('sw_theme') || 'crimson');
-
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
-
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(n => {
-                n.classList.remove('active');
-                if(n.getAttribute('onclick').includes(pageId)) n.classList.add('active');
-            });
-            document.getElementById('sidebar').classList.remove('active');
-            window.scrollTo(0,0);
-        }
-
-        async function uploadStory() {
-            const title = document.getElementById('adm-title').value;
-            const desc = document.getElementById('adm-desc').value;
-            const thumb = document.getElementById('adm-thumb').value;
-            const video = document.getElementById('adm-video').value;
-            const type = document.getElementById('adm-type').value;
-            if (!title || !video) return alert("Title and Video URL required!");
-            await db.collection('stories').add({
-                title, desc, thumb, videoUrl: video, type,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            alert("Story Uploaded Successfully!");
-            fetchStories();
-        }
-
-        async function fetchStories() {
-            const trend = document.getElementById('trending-container');
-            const latest = document.getElementById('latest-container');
-            try {
-                const snap = await db.collection('stories').orderBy('timestamp', 'desc').get();
-                trend.innerHTML = ''; latest.innerHTML = '';
-                if (snap.empty) {
-                    trend.innerHTML = '<p style="padding:20px; color:var(--dim)">No stories available.</p>';
-                    latest.innerHTML = trend.innerHTML;
-                    return;
-                }
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    const card = createCard(data);
-                    trend.innerHTML += card;
-                    latest.innerHTML += card;
-                });
-            } catch(e) { console.log("Fetch Error", e); }
-        }
-
-        function createCard(data) {
-            return `
-                <div class="card" onclick="openVideo('${data.videoUrl}', '${data.title}', '${data.desc}')">
-                    <span class="badge">${data.type === 'PREMIUM' ? 'PREMIUM' : 'SHORT'}</span>
-                    <img src="${data.thumb || 'https://via.placeholder.com/300x500'}">
-                    <div class="card-info">${data.title}</div>
-                </div>`;
-        }
-
-        async function runSearch() {
-            const query = document.getElementById('main-search-input').value.toLowerCase().trim();
-            const resultsBox = document.getElementById('search-results');
-            const infoBox = document.getElementById('search-info');
-            if (!query) return;
-            resultsBox.innerHTML = '<div style="color:var(--dim)">खोज जारी है...</div>';
-            try {
-                const snap = await db.collection('stories').get();
-                resultsBox.innerHTML = '';
-                let count = 0;
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.title.toLowerCase().includes(query)) {
-                        resultsBox.innerHTML += createCard(data);
-                        count++;
-                    }
-                });
-                infoBox.innerText = count > 0 ? `${count} कहानियाँ मिलीं` : "कोई कहानी नहीं मिली";
-            } catch (e) { console.error("Search Error:", e); }
-        }
-
-        function openVideo(url, title, desc) {
-            document.getElementById('v-title').innerText = title;
-            document.getElementById('v-desc').innerText = desc;
-            document.getElementById('video-modal').style.display = 'flex';
-            if (Hls.isSupported()) {
-                hls.loadSource(url);
-                hls.attachMedia(videoElement);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play());
-            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                videoElement.src = url;
-                videoElement.addEventListener('loadedmetadata', () => videoElement.play());
-            }
-        }
-
-        function closeVideo() {
-            document.getElementById('video-modal').style.display = 'none';
-            videoElement.pause();
-            hls.destroy();
-            hls = new Hls();
-        }
-
-        async function loadAdminUsers() {
-            const snap = await db.collection('users').get();
-            const tbody = document.getElementById('user-table-body');
-            tbody.innerHTML = '';
-            snap.forEach(doc => {
-                const u = doc.data();
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${u.name}</td>
-                        <td>${u.email}</td>
-                        <td><span class="status-badge ${u.membership === 'PREMIUM' ? 'st-prem' : 'st-free'}">${u.membership}</span></td>
-                        <td><button onclick="toggleUserMem('${doc.id}', '${u.membership}')" style="background:var(--primary); color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer">Change</button></td>
-                    </tr>`;
-            });
-        }
-
-        async function toggleUserMem(uid, cur) {
-            const next = cur === 'FREE' ? 'PREMIUM' : 'FREE';
-            await db.collection('users').doc(uid).update({ membership: next });
-            alert("Membership Updated!");
-            loadAdminUsers();
-        }
-
-        fetchStories();
     </script>
 </body>
 </html>
