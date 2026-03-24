@@ -61,7 +61,6 @@
         .close-video { position: absolute; top: 30px; right: 25px; font-size: 2.2rem; color: #fff; z-index: 2100; cursor: pointer; text-shadow: 0 0 10px #000; }
         .video-overlay { position: absolute; bottom: 40px; left: 20px; right: 20px; z-index: 2100; pointer-events: none; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 20px; }
 
-        /* Search Bar Style */
         .search-container { padding: 15px; display: flex; gap: 10px; }
         .search-container input { margin-bottom: 0; flex: 1; }
         .search-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 15px; }
@@ -77,10 +76,6 @@
         .st-free { background: #555; }
         .st-prem { background: var(--gold); color: #000; }
         #admin-link { display: none; color: var(--gold) !important; font-weight: bold; }
-        
-        /* Edit/Delete Admin Controls on Cards */
-        .admin-controls { position: absolute; bottom: 45px; right: 5px; display: flex; gap: 5px; z-index: 5; }
-        .admin-controls i { background: rgba(0,0,0,0.8); padding: 8px; border-radius: 5px; font-size: 0.8rem; color: #fff; }
     </style>
 </head>
 <body>
@@ -135,14 +130,12 @@
             <button class="btn" style="width: 60px;" onclick="runSearch()"><i class="fas fa-search"></i></button>
         </div>
         <div id="search-info" style="padding: 0 15px; color: var(--dim); font-size: 0.8rem;"></div>
-        <div class="search-grid" id="search-results">
-            </div>
+        <div class="search-grid" id="search-results"></div>
     </div>
 
     <div id="admin" class="page">
         <div class="admin-section">
-            <h3 id="admin-form-title">Add New Story</h3>
-            <input type="hidden" id="adm-id">
+            <h3>Add New Story</h3>
             <input type="text" id="adm-title" placeholder="Story Title">
             <textarea id="adm-desc" placeholder="Brief Description" rows="2"></textarea>
             <input type="text" id="adm-thumb" placeholder="Thumbnail Image URL">
@@ -151,10 +144,8 @@
                 <option value="SHORT VIDEO">SHORT VIDEO</option>
                 <option value="PREMIUM">PREMIUM STORY</option>
             </select>
-            <button class="btn" id="adm-submit-btn" onclick="uploadStory()">Upload Story</button>
-            <button class="btn" id="adm-cancel-btn" style="display:none; margin-top:10px; background:#444;" onclick="resetAdminForm()">Cancel Edit</button>
+            <button class="btn" onclick="uploadStory()">Upload Story</button>
         </div>
-
         <div class="admin-section">
             <h3>User Management</h3>
             <div style="overflow-x: auto;">
@@ -207,7 +198,6 @@
     </nav>
 
     <script>
-        // --- 1. CONFIGURATION ---
         const ADMIN_EMAIL = "itsdpbhai@gmail.com";
 
         const firebaseConfig = {
@@ -228,36 +218,42 @@
         const videoElement = document.getElementById('video-player');
         let hls = new Hls();
 
-        // --- 2. AUTHENTICATION & ACCESS CONTROL ---
+        // --- AUTHENTICATION LOGIC (FIXED) ---
+        
+        // चेक करें कि क्या यूजर लॉगिन होकर वापस आया है (Redirect के बाद)
+        auth.getRedirectResult().then(async (result) => {
+            if (result.user) {
+                const user = result.user;
+                const userRef = db.collection('users').doc(user.uid);
+                const doc = await userRef.get();
+                if (!doc.exists) {
+                    await userRef.set({
+                        name: user.displayName,
+                        email: user.email,
+                        membership: 'FREE',
+                        uid: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                showPage('home');
+            }
+        }).catch(err => {
+            if(err.code === 'auth/unauthorized-domain') {
+                alert("Error: Firebase Console में itsdpbhai.github.io डोमेन को Authorized Domains में जोड़ें।");
+            } else {
+                console.error("Auth Error:", err.message);
+            }
+        });
+
         function handleGoogleAuth() {
             const authBtn = document.getElementById('auth-btn');
-            
             if (auth.currentUser) {
                 auth.signOut().then(() => { location.reload(); });
             } else {
                 authBtn.disabled = true;
                 authBtn.innerText = "Connecting...";
-
-                auth.signInWithPopup(provider).then(async (result) => {
-                    const user = result.user;
-                    const userRef = db.collection('users').doc(user.uid);
-                    
-                    try {
-                        const doc = await userRef.get();
-                        if (!doc.exists) {
-                            await userRef.set({
-                                name: user.displayName,
-                                email: user.email,
-                                membership: 'FREE',
-                                uid: user.uid,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                        }
-                        alert("Welcome, " + user.displayName);
-                        showPage('home');
-                    } catch (e) { console.error("Database error:", e); }
-                }).catch(err => alert("Auth Error: " + err.message))
-                .finally(() => { authBtn.disabled = false; });
+                // Redirect का इस्तेमाल करें ताकि Popup Block न हो
+                auth.signInWithRedirect(provider);
             }
         }
 
@@ -272,21 +268,15 @@
             if (user) {
                 const doc = await db.collection('users').doc(user.uid).get();
                 const uData = doc.exists ? doc.data() : { name: user.displayName, email: user.email, membership: 'FREE' };
-                
                 sideInfo.innerText = `नमस्ते, ${uData.name}`;
                 pName.innerText = uData.name;
                 pEmail.innerText = uData.email;
                 pBadge.innerText = uData.membership;
                 pBadge.className = `status-badge ${uData.membership === 'PREMIUM' ? 'st-prem' : 'st-free'}`;
                 authBtn.innerText = "Logout";
-                
-                // CRITICAL ACCESS CONTROL Logic
                 if (user.email === ADMIN_EMAIL) {
                     adminLink.style.display = 'flex';
                     loadAdminUsers();
-                } else {
-                    adminLink.style.display = 'none';
-                    if(document.getElementById('admin').classList.contains('active')) showPage('home');
                 }
             } else {
                 sideInfo.innerText = "Sign in to explore";
@@ -296,12 +286,10 @@
                 pBadge.className = "status-badge st-free";
                 authBtn.innerText = "Login with Google";
                 adminLink.style.display = 'none';
-                if(document.getElementById('admin').classList.contains('active')) showPage('home');
             }
-            fetchStories(); // Refresh stories to show/hide edit icons
         });
 
-        // --- 3. UI CONTROLS ---
+        // --- UI & CORE FUNCTIONS ---
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('sw_theme', theme);
@@ -311,167 +299,85 @@
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
 
         function showPage(pageId) {
-            // ADMIN ACCESS GUARD
-            if (pageId === 'admin') {
-                if (!auth.currentUser || auth.currentUser.email !== ADMIN_EMAIL) {
-                    alert("Unauthorized Access!");
-                    return;
-                }
-            }
-
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            
             document.querySelectorAll('.nav-item').forEach(n => {
                 n.classList.remove('active');
-                if(n.getAttribute('onclick') && n.getAttribute('onclick').includes(pageId)) n.classList.add('active');
+                if(n.getAttribute('onclick').includes(pageId)) n.classList.add('active');
             });
             document.getElementById('sidebar').classList.remove('active');
             window.scrollTo(0,0);
         }
 
-        // --- 4. STORY SYSTEM & SEARCH ---
         async function uploadStory() {
-            const id = document.getElementById('adm-id').value;
             const title = document.getElementById('adm-title').value;
             const desc = document.getElementById('adm-desc').value;
             const thumb = document.getElementById('adm-thumb').value;
             const video = document.getElementById('adm-video').value;
             const type = document.getElementById('adm-type').value;
-
             if (!title || !video) return alert("Title and Video URL required!");
-
-            const storyData = {
+            await db.collection('stories').add({
                 title, desc, thumb, videoUrl: video, type,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
-
-            try {
-                if(id) {
-                    await db.collection('stories').doc(id).update(storyData);
-                    alert("Story Updated!");
-                } else {
-                    await db.collection('stories').add(storyData);
-                    alert("Story Uploaded!");
-                }
-                resetAdminForm();
-                fetchStories();
-            } catch(e) { alert("Error: " + e.message); }
-        }
-
-        function resetAdminForm() {
-            document.getElementById('adm-id').value = '';
-            document.getElementById('adm-title').value = '';
-            document.getElementById('adm-desc').value = '';
-            document.getElementById('adm-thumb').value = '';
-            document.getElementById('adm-video').value = '';
-            document.getElementById('admin-form-title').innerText = "Add New Story";
-            document.getElementById('adm-submit-btn').innerText = "Upload Story";
-            document.getElementById('adm-cancel-btn').style.display = 'none';
+            });
+            alert("Story Uploaded Successfully!");
+            fetchStories();
         }
 
         async function fetchStories() {
             const trend = document.getElementById('trending-container');
             const latest = document.getElementById('latest-container');
-            
             try {
                 const snap = await db.collection('stories').orderBy('timestamp', 'desc').get();
                 trend.innerHTML = ''; latest.innerHTML = '';
-                
                 if (snap.empty) {
-                    const noData = '<p style="padding:20px; color:var(--dim)">No stories available.</p>';
-                    trend.innerHTML = noData; latest.innerHTML = noData;
+                    trend.innerHTML = '<p style="padding:20px; color:var(--dim)">No stories available.</p>';
+                    latest.innerHTML = trend.innerHTML;
                     return;
                 }
-
                 snap.forEach(doc => {
                     const data = doc.data();
-                    const card = createCard(data, doc.id);
+                    const card = createCard(data);
                     trend.innerHTML += card;
                     latest.innerHTML += card;
                 });
             } catch(e) { console.log("Fetch Error", e); }
         }
 
-        function createCard(data, id) {
-            let adminButtons = '';
-            // Only show edit/delete if logged in as Admin
-            if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL) {
-                adminButtons = `
-                    <div class="admin-controls">
-                        <i class="fas fa-edit" onclick="event.stopPropagation(); editStory('${id}')"></i>
-                        <i class="fas fa-trash" onclick="event.stopPropagation(); deleteStory('${id}')"></i>
-                    </div>`;
-            }
-
+        function createCard(data) {
             return `
-                <div class="card" style="position:relative" onclick="openVideo('${data.videoUrl}', '${data.title}', '${data.desc}')">
+                <div class="card" onclick="openVideo('${data.videoUrl}', '${data.title}', '${data.desc}')">
                     <span class="badge">${data.type === 'PREMIUM' ? 'PREMIUM' : 'SHORT'}</span>
-                    ${adminButtons}
                     <img src="${data.thumb || 'https://via.placeholder.com/300x500'}">
                     <div class="card-info">${data.title}</div>
                 </div>`;
         }
 
-        async function editStory(id) {
-            const doc = await db.collection('stories').doc(id).get();
-            if(!doc.exists) return;
-            const data = doc.data();
-            
-            showPage('admin');
-            document.getElementById('adm-id').value = id;
-            document.getElementById('adm-title').value = data.title;
-            document.getElementById('adm-desc').value = data.desc;
-            document.getElementById('adm-thumb').value = data.thumb;
-            document.getElementById('adm-video').value = data.videoUrl;
-            document.getElementById('adm-type').value = data.type;
-            
-            document.getElementById('admin-form-title').innerText = "Edit Story";
-            document.getElementById('adm-submit-btn').innerText = "Update Story";
-            document.getElementById('adm-cancel-btn').style.display = 'block';
-        }
-
-        async function deleteStory(id) {
-            if(confirm("Are you sure you want to delete this story?")) {
-                await db.collection('stories').doc(id).delete();
-                fetchStories();
-            }
-        }
-
-        // Search Logic
         async function runSearch() {
             const query = document.getElementById('main-search-input').value.toLowerCase().trim();
             const resultsBox = document.getElementById('search-results');
             const infoBox = document.getElementById('search-info');
-
             if (!query) return;
-
             resultsBox.innerHTML = '<div style="color:var(--dim)">खोज जारी है...</div>';
-            infoBox.innerText = "";
-
             try {
                 const snap = await db.collection('stories').get();
                 resultsBox.innerHTML = '';
                 let count = 0;
-
                 snap.forEach(doc => {
                     const data = doc.data();
-                    if (data.title.toLowerCase().includes(query) || (data.desc && data.desc.toLowerCase().includes(query))) {
-                        resultsBox.innerHTML += createCard(data, doc.id);
+                    if (data.title.toLowerCase().includes(query)) {
+                        resultsBox.innerHTML += createCard(data);
                         count++;
                     }
                 });
-
                 infoBox.innerText = count > 0 ? `${count} कहानियाँ मिलीं` : "कोई कहानी नहीं मिली";
             } catch (e) { console.error("Search Error:", e); }
         }
 
-        // --- 5. VIDEO PLAYER ---
         function openVideo(url, title, desc) {
             document.getElementById('v-title').innerText = title;
             document.getElementById('v-desc').innerText = desc;
             document.getElementById('video-modal').style.display = 'flex';
-
             if (Hls.isSupported()) {
                 hls.loadSource(url);
                 hls.attachMedia(videoElement);
@@ -489,7 +395,6 @@
             hls = new Hls();
         }
 
-        // --- 6. ADMIN PANEL TOOLS ---
         async function loadAdminUsers() {
             const snap = await db.collection('users').get();
             const tbody = document.getElementById('user-table-body');
@@ -513,7 +418,6 @@
             loadAdminUsers();
         }
 
-        // Start App
         fetchStories();
     </script>
 </body>
